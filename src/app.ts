@@ -1,3 +1,32 @@
+interface Validatable {
+  value: string | number;
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+}
+
+function validate(validatableInput :Validatable) {
+  let isValid = true;
+  if (validatableInput.required) {
+    isValid = isValid && validatableInput.value.toString().trim().length !== 0;
+  }
+  if (validatableInput.minLength != null && typeof validatableInput.value === 'string') {
+    isValid = isValid && validatableInput.value.length >= validatableInput.minLength;
+  }
+  if (validatableInput.maxLength != null && typeof validatableInput.value === 'string') {
+    isValid = isValid && validatableInput.value.length <= validatableInput.maxLength;
+  }
+  if (validatableInput.min != null && typeof validatableInput.value === 'number') {
+    isValid = isValid && validatableInput.value >= validatableInput.min;
+  }
+  if (validatableInput.max != null && typeof validatableInput.value === 'number') {
+    isValid = isValid && validatableInput.value <= validatableInput.max;
+  }
+  return isValid;
+}
+
 function AutoBind(_target: any, _methodName: string | Symbol | number, descriptor: PropertyDescriptor) {
   const originalMethod = descriptor.value;
   const updatedDescriptor: PropertyDescriptor = {
@@ -8,7 +37,6 @@ function AutoBind(_target: any, _methodName: string | Symbol | number, descripto
       return boundFn;
     }
   };
-  console.log(updatedDescriptor)
   return updatedDescriptor;
 }
 
@@ -38,16 +66,32 @@ class ProjectInput {
 
   // submitHandlerから呼び出したい
   // 入力値のバリデーションをする関数(戻り値 → title, description, manday)
-  private gatherUserInput() : [string, string, number] | void { // 戻り値にundefinedは定義しない
+  private gatherUserInput() : [string, string, number] | void {
     const enteredTitle = this.titleInputElement.value;
     const enteredDescription = this.descriptionInputElement.value;
     const enteredManday = this.mandayInputElement.value; 
 
-    // バリデーションの内容を改善させてみる
-    if (enteredTitle.trim().length === 0 ||
-        enteredDescription.trim().length === 0 ||
-        enteredManday.trim().length === 0
-    ) {
+    const titleValidatable : Validatable = {
+      value: enteredTitle,
+      required: true,
+    }
+    const descriptionValidatable : Validatable = {
+      value: enteredDescription,
+      required: true,
+      minLength: 5
+    }
+    const mandayValidatable : Validatable = {
+      value: +enteredManday, // numberにする
+      required: true,
+      min: 1,
+      max: 1000
+    }
+
+    if (
+      !validate(titleValidatable) ||
+      !validate(descriptionValidatable) ||
+      !validate(mandayValidatable) 
+      ) {
       alert('入力値が正しくありません 再度お試しください')
       return;
     } else {
@@ -69,8 +113,6 @@ class ProjectInput {
     // userInputがタプル型か確認したい
     // → タプル : 型が決まった配列 ... 配列かどうかをみる & 引数にとって中身を確認
     if (Array.isArray(userInput)) {
-      const [title, desc, manday] = userInput;
-      console.log(title, desc, manday)
       this.clearInputs();
     }
   }
