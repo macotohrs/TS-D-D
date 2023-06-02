@@ -1,9 +1,9 @@
 function AutoBind(_target: any, _methodName: string | Symbol | number, descriptor: PropertyDescriptor) {
-  const originalMethod = descriptor.value; // value : ƒ submitHandler(event)
+  const originalMethod = descriptor.value;
   const updatedDescriptor: PropertyDescriptor = {
-    configurable: true, // プロパティを変更するようにする
+    configurable: true,
     enumerable: false,
-    get() { // getterで参照したいオブジェクトをbindする  // オリジナルの関数をアクセスした時に実行される
+    get() {
       const boundFn = originalMethod.bind(this);
       return boundFn;
     }
@@ -36,11 +36,43 @@ class ProjectInput {
     this.attach();
   }
 
+  // submitHandlerから呼び出したい
+  // 入力値のバリデーションをする関数(戻り値 → title, description, manday)
+  private gatherUserInput() : [string, string, number] | void { // 戻り値にundefinedは定義しない
+    const enteredTitle = this.titleInputElement.value;
+    const enteredDescription = this.descriptionInputElement.value;
+    const enteredManday = this.mandayInputElement.value; 
+
+    // バリデーションの内容を改善させてみる
+    if (enteredTitle.trim().length === 0 ||
+        enteredDescription.trim().length === 0 ||
+        enteredManday.trim().length === 0
+    ) {
+      alert('入力値が正しくありません 再度お試しください')
+      return;
+    } else {
+      return [enteredTitle, enteredDescription, +enteredManday]; // + Number型に変換
+    }
+  }
+
+  private clearInputs() {
+    this.titleInputElement.value = '';
+    this.descriptionInputElement.value = '';
+    this.mandayInputElement.value = '';
+  }
+
   // イベントのオブジェクトを受け取る
   @AutoBind
   private submitHandler(event: Event) {
     event.preventDefault();
-    console.log(this.titleInputElement.value);
+    const userInput = this.gatherUserInput();
+    // userInputがタプル型か確認したい
+    // → タプル : 型が決まった配列 ... 配列かどうかをみる & 引数にとって中身を確認
+    if (Array.isArray(userInput)) {
+      const [title, desc, manday] = userInput;
+      console.log(title, desc, manday)
+      this.clearInputs();
+    }
   }
 
   // イベントリスナーの設定
