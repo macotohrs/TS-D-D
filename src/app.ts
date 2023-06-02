@@ -1,3 +1,17 @@
+function AutoBind(_target: any, _methodName: string | Symbol | number, descriptor: PropertyDescriptor) {
+  const originalMethod = descriptor.value; // value : ƒ submitHandler(event)
+  const updatedDescriptor: PropertyDescriptor = {
+    configurable: true, // プロパティを変更するようにする
+    enumerable: false,
+    get() { // getterで参照したいオブジェクトをbindする  // オリジナルの関数をアクセスした時に実行される
+      const boundFn = originalMethod.bind(this);
+      return boundFn;
+    }
+  };
+  console.log(updatedDescriptor)
+  return updatedDescriptor;
+}
+
 class ProjectInput {
   templateElement: HTMLTemplateElement;
   hostElement: HTMLDivElement;
@@ -23,8 +37,8 @@ class ProjectInput {
   }
 
   // イベントのオブジェクトを受け取る
+  @AutoBind
   private submitHandler(event: Event) {
-    // preventDefault このフォームからHTTPリクエストが行われないようにする
     event.preventDefault();
     console.log(this.titleInputElement.value);
   }
