@@ -39,6 +39,30 @@ function AutoBind(_target: any, _methodName: string | Symbol | number, descripto
   };
   return updatedDescriptor;
 }
+// プロジェクトリストのテンプレートをHTMLに追加して表示する
+class ProjectList {
+  templateElement: HTMLTemplateElement;
+  hostElement: HTMLDivElement;
+  element: HTMLElement;
+  constructor(private type: 'active' | 'finished') {
+    this.templateElement = document.getElementById('project-list')! as HTMLTemplateElement;
+    this.hostElement = document.getElementById('app')! as HTMLDivElement;
+    const importedNode = document.importNode(this.templateElement.content, true);
+    this.element = importedNode.firstElementChild as HTMLFormElement;
+    this.element.id = `${this.type}-project`;
+    this.attach();
+    this.renderContent();
+  }
+
+  private renderContent() {
+    const listId = `${this.type}-projects-list`;
+    this.element.querySelector('ul')!.id = listId;
+    this.element.querySelector('h2')!.textContent = this.type === 'active'? '実行中プロジェクト' : '完了プロジェクト';
+  }
+  private attach(){
+    this.hostElement.insertAdjacentElement('beforeend', this.element);
+  }
+}
 
 class ProjectInput {
   templateElement: HTMLTemplateElement;
@@ -54,7 +78,7 @@ class ProjectInput {
 
     const importedNode = document.importNode(this.templateElement.content, true);
     this.element = importedNode.firstElementChild as HTMLFormElement;
-    this.element.id = 'user-input' // cssのidを適用
+    this.element.id = 'user-input';
     
     this.titleInputElement = this.element.querySelector("#title") as HTMLInputElement;
     this.descriptionInputElement = this.element.querySelector("#description") as HTMLInputElement;
@@ -92,7 +116,7 @@ class ProjectInput {
       !validate(descriptionValidatable) ||
       !validate(mandayValidatable) 
       ) {
-      alert('入力値が正しくありません 再度お試しください')
+      alert('入力値が正しくありません 再度お試しください');
       return;
     } else {
       return [enteredTitle, enteredDescription, +enteredManday]; // + Number型に変換
@@ -119,13 +143,15 @@ class ProjectInput {
 
   // イベントリスナーの設定
   private configure() {
-    this.element.addEventListener("submit", this.submitHandler)
+    this.element.addEventListener("submit", this.submitHandler);
   }
 
   // 要素を追加
   private attach() {
-    this.hostElement.insertAdjacentElement('afterbegin', this.element)
+    this.hostElement.insertAdjacentElement('afterbegin', this.element);
   }
 }
 
 const prjInput = new ProjectInput();
+const activeProjectList = new ProjectList('active');
+const finishedProjectList = new ProjectList('finished');
