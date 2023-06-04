@@ -1,7 +1,25 @@
+// Project Type クラスで型を定義する
+enum ProjectStatus {
+  Active,
+  Finished,
+}
+
+class Project {
+  constructor(
+    public id: string,
+    public title: string,
+    public description: string,
+    public manday: number,
+    public status: ProjectStatus
+  ) {}
+}
+
 // Project State Management
+type Listener = (items: Project[]) => void;
+
 class ProjectState {
-  private listeners: any[] = [];
-  private projects: any[] = [];
+  private listeners: Listener[] = [];
+  private projects: Project[] = [];
   private static instance: ProjectState; //インスタンスを保持するためのprop
   private constructor() {
     // シングルトン
@@ -15,7 +33,7 @@ class ProjectState {
     return this.instance;
   }
 
-  addListener(listenerFn: Function) {
+  addListener(listenerFn: Listener) {
     this.listeners.push(listenerFn);
   }
 
@@ -26,12 +44,13 @@ class ProjectState {
   }
 
   addProject(title: string, description: string, manday: number) {
-    const newProject = {
-      id: Math.random().toString(),
-      title: title,
-      description: description,
-      manday: manday,
-    };
+    const newProject = new Project(
+      Math.random().toString(),
+      title,
+      description,
+      manday,
+      ProjectStatus.Active
+    );
     this.projects.push(newProject);
     this.notifyListeners();
   }
@@ -93,7 +112,7 @@ class ProjectList {
   templateElement: HTMLTemplateElement; // <template id="project-list">
   hostElement: HTMLDivElement; //  <div id="app"></div>
   element: HTMLElement; // <section>
-  assignedProjects: any[]; // <section>
+  assignedProjects: Project[]; // <section>
 
   constructor(private type: "active" | "finished") {
     // 要素への参照を取得する作業
@@ -110,7 +129,7 @@ class ProjectList {
     this.element = importedHTML.firstElementChild as HTMLElement;
     this.element.id = `${this.type}-projects`;
 
-    projectState.addListener((projects: any[]) => {
+    projectState.addListener((projects: Project[]) => {
       this.assignedProjects = projects;
       this.renderProjects();
     });
