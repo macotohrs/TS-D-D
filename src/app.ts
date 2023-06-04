@@ -1,4 +1,4 @@
-interface Validatable {
+interface IValidation {
   value: string | number;
   required?: boolean;
   minLength?: number;
@@ -7,151 +7,199 @@ interface Validatable {
   max?: number;
 }
 
-function validate(validatableInput :Validatable) {
+function validate(input: IValidation) {
+  console.log(input)
   let isValid = true;
-  if (validatableInput.required) {
-    isValid = isValid && validatableInput.value.toString().trim().length !== 0;
+  if (input.required) {
+    if (typeof input.value === "string") {
+      isValid = isValid &&  input.value.trim().length > 0;
+    }
   }
-  if (validatableInput.minLength != null && typeof validatableInput.value === 'string') {
-    isValid = isValid && validatableInput.value.length >= validatableInput.minLength;
+  if (input.minLength && typeof input.value === "string") {
+    isValid = isValid && input.value.length >= input.minLength;
   }
-  if (validatableInput.maxLength != null && typeof validatableInput.value === 'string') {
-    isValid = isValid && validatableInput.value.length <= validatableInput.maxLength;
+  if (input.maxLength && typeof input.value === "string") {
+    isValid = isValid && input.value.length >= input.maxLength;
   }
-  if (validatableInput.min != null && typeof validatableInput.value === 'number') {
-    isValid = isValid && validatableInput.value >= validatableInput.min;
+  if (input.min && typeof input.value === "number") {
+    isValid = isValid && input.value >= input.min;
   }
-  if (validatableInput.max != null && typeof validatableInput.value === 'number') {
-    isValid = isValid && validatableInput.value <= validatableInput.max;
+  if (input.max && typeof input.value === "number") {
+    isValid = isValid && input.value <= input.max;
   }
   return isValid;
 }
 
-function AutoBind(_target: any, _methodName: string | Symbol | number, descriptor: PropertyDescriptor) {
+// autoBind decorator
+function autoBind(
+  _target: any,
+  _methodName: string,
+  descriptor: PropertyDescriptor
+) {
   const originalMethod = descriptor.value;
-  const updatedDescriptor: PropertyDescriptor = {
+  const adDescriptor: PropertyDescriptor = {
     configurable: true,
     enumerable: false,
     get() {
       const boundFn = originalMethod.bind(this);
       return boundFn;
-    }
+    },
   };
-  return updatedDescriptor;
+  return adDescriptor;
 }
-// プロジェクトリストのテンプレートをHTMLに追加して表示する
+
+// 描画させたい
 class ProjectList {
-  templateElement: HTMLTemplateElement;
-  hostElement: HTMLDivElement;
-  element: HTMLElement;
+  templateElement: HTMLTemplateElement; // <template id="project-list">
+  hostElement: HTMLDivElement; //  <div id="app"></div>
+  element: HTMLElement; // <section>
+
+
   constructor(private type: 'active' | 'finished') {
-    this.templateElement = document.getElementById('project-list')! as HTMLTemplateElement;
-    this.hostElement = document.getElementById('app')! as HTMLDivElement;
-    const importedNode = document.importNode(this.templateElement.content, true);
-    this.element = importedNode.firstElementChild as HTMLFormElement;
-    this.element.id = `${this.type}-project`;
+    // 要素への参照を取得する作業
+    this.templateElement = document.getElementById(
+      "project-list"
+    )! as HTMLTemplateElement; // <template>要素への参照
+    this.hostElement = document.getElementById("app")! as HTMLDivElement; // テンプレートを表示する親要素(id='app')への参照
+
+    const importedHTML = document.importNode(
+      this.templateElement.content,
+      true
+    )!;
+    this.element = importedHTML.firstElementChild as HTMLElement;
+    this.element.id = `${this.type}-projects`;
     this.attach();
     this.renderContent();
   }
 
-  private renderContent() {
-    const listId = `${this.type}-projects-list`;
+  private renderContent(){
+    const listId = `${this.type}-projects`;
     this.element.querySelector('ul')!.id = listId;
     this.element.querySelector('h2')!.textContent = this.type === 'active'? '実行中プロジェクト' : '完了プロジェクト';
   }
-  private attach(){
-    this.hostElement.insertAdjacentElement('beforeend', this.element);
+
+  private attach() {
+    // 送信した値を描画する
+    this.hostElement.insertAdjacentElement("beforeend", this.element);
   }
 }
 
 class ProjectInput {
-  templateElement: HTMLTemplateElement;
-  hostElement: HTMLDivElement;
-  element: HTMLFormElement;
+  templateElement: HTMLTemplateElement; // <template id="project-input">
+  hostElement: HTMLDivElement; //  <div id="app"></div>
+  element: HTMLFormElement; // <From>
+
   titleInputElement: HTMLInputElement;
   descriptionInputElement: HTMLInputElement;
   mandayInputElement: HTMLInputElement;
 
   constructor() {
-    this.templateElement = document.getElementById('project-input')! as HTMLTemplateElement;
-    this.hostElement = document.getElementById('app')! as HTMLDivElement;
+    // 要素への参照を取得する作業
+    this.templateElement = document.getElementById(
+      "project-input"
+    )! as HTMLTemplateElement; // <template>要素への参照
+    this.hostElement = document.getElementById("app")! as HTMLDivElement; // テンプレートを表示する親要素(id='app')への参照
 
-    const importedNode = document.importNode(this.templateElement.content, true);
-    this.element = importedNode.firstElementChild as HTMLFormElement;
-    this.element.id = 'user-input';
-    
-    this.titleInputElement = this.element.querySelector("#title") as HTMLInputElement;
-    this.descriptionInputElement = this.element.querySelector("#description") as HTMLInputElement;
-    this.mandayInputElement = this.element.querySelector("#manday") as HTMLInputElement;
+    const importedHTML = document.importNode(
+      this.templateElement.content,
+      true
+    )!;
+    this.element = importedHTML.firstElementChild as HTMLFormElement;
+    this.element.id = "user-input";
+
+    this.titleInputElement = this.element.querySelector(
+      "#title"
+    ) as HTMLInputElement; // <input type="text" id="title" />
+    this.descriptionInputElement = this.element.querySelector(
+      "#description"
+    ) as HTMLInputElement; // <textarea id="description" rows="3"></textarea>
+    this.mandayInputElement = this.element.querySelector(
+      "#manday"
+    ) as HTMLInputElement; // <input type="number" id="manday" step="1" min="0" max="10000" />
 
     this.configure();
     this.attach();
   }
 
-  // submitHandlerから呼び出したい
-  // 入力値のバリデーションをする関数(戻り値 → title, description, manday)
-  private gatherUserInput() : [string, string, number] | void {
-    const enteredTitle = this.titleInputElement.value;
-    const enteredDescription = this.descriptionInputElement.value;
-    const enteredManday = this.mandayInputElement.value; 
+  // 3つのフォームすべてにアクセスしてユーザの入力値を取得。入力値が正しいかバリデーションを行う。バリデーションを行った結果を返す
+  private allInputContent(): [string, string, number] | void {
+    // タプルかundefinedを返す
+    // 入力値を取得
+    const inputTitle = this.titleInputElement.value;
+    const inputDescription = this.descriptionInputElement.value;
+    const inputManday = this.mandayInputElement.value;
 
-    const titleValidatable : Validatable = {
-      value: enteredTitle,
-      required: true,
-    }
-    const descriptionValidatable : Validatable = {
-      value: enteredDescription,
+    const titleV: IValidation = {
+      value: inputTitle,
+      required: true
+    };
+    const descriptionV: IValidation = {
+      value: inputDescription,
       required: true,
       minLength: 5
-    }
-    const mandayValidatable : Validatable = {
-      value: +enteredManday, // numberにする
+    };
+    const mandayV: IValidation = {
+      value: +inputManday,
       required: true,
       min: 1,
-      max: 1000
-    }
-
+      max: 1000,
+    };
+    console.log(
+      validate(titleV),
+      validate(descriptionV),
+      validate(mandayV)
+    )
     if (
-      !validate(titleValidatable) ||
-      !validate(descriptionValidatable) ||
-      !validate(mandayValidatable) 
-      ) {
-      alert('入力値が正しくありません 再度お試しください');
-      return;
+      // required : 必須 , minlength: 最小の文字数
+      !validate(titleV) ||
+      !validate(descriptionV) ||
+      !validate(mandayV)
+    ) {
+      alert("入力値が正しくありません！");
     } else {
-      return [enteredTitle, enteredDescription, +enteredManday]; // + Number型に変換
+      return [inputTitle, inputDescription, +inputManday];
     }
+    // if (
+    //   inputTitle.trim().length === 0 ||
+    //   inputDescription.trim().length === 0 ||
+    //   +inputManday === 0
+    // ) {
+    //   alert("入力値が正しくありません！");
+    // } else {
+    //   return [inputTitle, inputDescription, +inputManday];
+    // }
   }
 
   private clearInputs() {
-    this.titleInputElement.value = '';
-    this.descriptionInputElement.value = '';
-    this.mandayInputElement.value = '';
+    this.titleInputElement.value = "";
+    this.descriptionInputElement.value = "";
+    this.mandayInputElement.value = "";
   }
 
-  // イベントのオブジェクトを受け取る
-  @AutoBind
+  // 各項目に入力された値を見る
+  @autoBind
   private submitHandler(event: Event) {
     event.preventDefault();
-    const userInput = this.gatherUserInput();
-    // userInputがタプル型か確認したい
-    // → タプル : 型が決まった配列 ... 配列かどうかをみる & 引数にとって中身を確認
+    const userInput = this.allInputContent();
     if (Array.isArray(userInput)) {
-      this.clearInputs();
+      const [title, description, manday] = userInput;
+      console.log(title, description, manday);
     }
+    this.clearInputs();
   }
 
   // イベントリスナーの設定
   private configure() {
+    // this.element.addEventListener("submit", this.submitHandler.bind(this));
     this.element.addEventListener("submit", this.submitHandler);
   }
 
-  // 要素を追加
+  // 要素を追加する作業
   private attach() {
-    this.hostElement.insertAdjacentElement('afterbegin', this.element);
+    // フォームを描画する
+    this.hostElement.insertAdjacentElement("afterbegin", this.element); // 第一引数はどこに追加するかのオプション
   }
 }
-
 const prjInput = new ProjectInput();
 const activeProjectList = new ProjectList('active');
 const finishedProjectList = new ProjectList('finished');
