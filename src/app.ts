@@ -1,3 +1,44 @@
+// Project State Management
+class ProjectState {
+  private listeners: any[] = [];
+  private projects: any[] = [];
+  private static instance: ProjectState; //インスタンスを保持するためのprop
+  private constructor() {
+    // シングルトン
+  }
+
+  static getInstance() {
+    if (this.instance) {
+      return this.instance;
+    }
+    this.instance = new ProjectState();
+    return this.instance;
+  }
+
+  addListener(listenerFn: Function) {
+    this.listeners.push(listenerFn);
+  }
+
+  private notifyListeners() {
+    for (const listenerFn of this.listeners) {
+      listenerFn(this.projects.slice());
+    }
+  }
+
+  addProject(title: string, description: string, manday: number) {
+    const newProject = {
+      id: Math.random().toString(),
+      title: title,
+      description: description,
+      manday: manday,
+    };
+    this.projects.push(newProject);
+    this.notifyListeners();
+  }
+}
+
+const projectState = ProjectState.getInstance(); // 他のクラスのようにnewするのではなく、getInstanceの処理で常にインスタンスが一つになるようにする
+
 interface IValidation {
   value: string | number;
   required?: boolean;
@@ -8,11 +49,10 @@ interface IValidation {
 }
 
 function validate(input: IValidation) {
-  console.log(input)
   let isValid = true;
   if (input.required) {
     if (typeof input.value === "string") {
-      isValid = isValid &&  input.value.trim().length > 0;
+      isValid = isValid && input.value.trim().length > 0;
     }
   }
   if (input.minLength && typeof input.value === "string") {
@@ -53,14 +93,15 @@ class ProjectList {
   templateElement: HTMLTemplateElement; // <template id="project-list">
   hostElement: HTMLDivElement; //  <div id="app"></div>
   element: HTMLElement; // <section>
+  assignedProjects: any[]; // <section>
 
-
-  constructor(private type: 'active' | 'finished') {
+  constructor(private type: "active" | "finished") {
     // 要素への参照を取得する作業
     this.templateElement = document.getElementById(
       "project-list"
     )! as HTMLTemplateElement; // <template>要素への参照
     this.hostElement = document.getElementById("app")! as HTMLDivElement; // テンプレートを表示する親要素(id='app')への参照
+    this.assignedProjects = [];
 
     const importedHTML = document.importNode(
       this.templateElement.content,
@@ -68,14 +109,31 @@ class ProjectList {
     )!;
     this.element = importedHTML.firstElementChild as HTMLElement;
     this.element.id = `${this.type}-projects`;
+
+    projectState.addListener((projects: any[]) => {
+      this.assignedProjects = projects;
+      this.renderProjects();
+    });
     this.attach();
     this.renderContent();
   }
 
-  private renderContent(){
-    const listId = `${this.type}-projects`;
-    this.element.querySelector('ul')!.id = listId;
-    this.element.querySelector('h2')!.textContent = this.type === 'active'? '実行中プロジェクト' : '完了プロジェクト';
+  private renderProjects() {
+    const listEl = document.getElementById(
+      `${this.type}-projects-list`
+    )! as HTMLUListElement;
+    for (const prjItem of this.assignedProjects) {
+      const listItem = document.createElement("li");
+      listItem.textContent = prjItem.title;
+      listEl?.appendChild(listItem);
+    }
+  }
+
+  private renderContent() {
+    const listId = `${this.type}-projects-list`;
+    this.element.querySelector("ul")!.id = listId;
+    this.element.querySelector("h2")!.textContent =
+      this.type === "active" ? "実行中プロジェクト" : "完了プロジェクト";
   }
 
   private attach() {
@@ -131,12 +189,12 @@ class ProjectInput {
 
     const titleV: IValidation = {
       value: inputTitle,
-      required: true
+      required: true,
     };
     const descriptionV: IValidation = {
       value: inputDescription,
       required: true,
-      minLength: 5
+      minLength: 5,
     };
     const mandayV: IValidation = {
       value: +inputManday,
@@ -144,30 +202,11 @@ class ProjectInput {
       min: 1,
       max: 1000,
     };
-    console.log(
-      validate(titleV),
-      validate(descriptionV),
-      validate(mandayV)
-    )
-    if (
-      // required : 必須 , minlength: 最小の文字数
-      !validate(titleV) ||
-      !validate(descriptionV) ||
-      !validate(mandayV)
-    ) {
+    if (!validate(titleV) || !validate(descriptionV) || !validate(mandayV)) {
       alert("入力値が正しくありません！");
     } else {
       return [inputTitle, inputDescription, +inputManday];
     }
-    // if (
-    //   inputTitle.trim().length === 0 ||
-    //   inputDescription.trim().length === 0 ||
-    //   +inputManday === 0
-    // ) {
-    //   alert("入力値が正しくありません！");
-    // } else {
-    //   return [inputTitle, inputDescription, +inputManday];
-    // }
   }
 
   private clearInputs() {
@@ -183,14 +222,13 @@ class ProjectInput {
     const userInput = this.allInputContent();
     if (Array.isArray(userInput)) {
       const [title, description, manday] = userInput;
-      console.log(title, description, manday);
+      projectState.addProject(title, description, manday);
     }
     this.clearInputs();
   }
 
   // イベントリスナーの設定
   private configure() {
-    // this.element.addEventListener("submit", this.submitHandler.bind(this));
     this.element.addEventListener("submit", this.submitHandler);
   }
 
@@ -201,5 +239,5 @@ class ProjectInput {
   }
 }
 const prjInput = new ProjectInput();
-const activeProjectList = new ProjectList('active');
-const finishedProjectList = new ProjectList('finished');
+const activeProjectList = new ProjectList("active");
+const finishedProjectList = new ProjectList("finished");
