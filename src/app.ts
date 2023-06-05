@@ -15,13 +15,22 @@ class Project {
 }
 
 // Project State Management
-type Listener = (items: Project[]) => void;
+type Listener<T> = (items: T[]) => void;
 
-class ProjectState {
-  private listeners: Listener[] = [];
+class State<T> {
+  protected listeners: Listener<T>[] = []; // protected継承先のクラスからならアクセスできる（他はダメ）
+
+  addListener(listenerFn: Listener<T>) {
+    console.log("初回");
+    this.listeners.push(listenerFn);
+  }
+}
+
+class ProjectState extends State<Project> {
   private projects: Project[] = [];
   private static instance: ProjectState; //インスタンスを保持するためのprop
   private constructor() {
+    super();
     // シングルトン
   }
 
@@ -33,17 +42,15 @@ class ProjectState {
     return this.instance;
   }
 
-  addListener(listenerFn: Listener) {
-    this.listeners.push(listenerFn);
-  }
-
   private notifyListeners() {
+    console.log("2");
     for (const listenerFn of this.listeners) {
       listenerFn(this.projects.slice());
     }
   }
 
   addProject(title: string, description: string, manday: number) {
+    console.log("1");
     const newProject = new Project(
       Math.random().toString(),
       title,
@@ -107,89 +114,131 @@ function autoBind(
   return adDescriptor;
 }
 
-// 描画させたい
-class ProjectList {
-  templateElement: HTMLTemplateElement; // <template id="project-list">
-  hostElement: HTMLDivElement; //  <div id="app"></div>
-  element: HTMLElement; // <section>
-  assignedProjects: Project[]; // <section>
+abstract class Component<T extends HTMLElement, U extends HTMLElement> {
+  // abstract 常に継承されて使われる (→ インスタンス化できなくする)
+  templateElement: HTMLTemplateElement;
+  hostElement: T;
+  element: U;
 
-  constructor(private type: "active" | "finished") {
-    // 要素への参照を取得する作業
+  constructor(
+    templateId: string,
+    hostElementId: string,
+    insertAtStart: boolean,
+    newElementId?: string
+  ) {
     this.templateElement = document.getElementById(
-      "project-list"
-    )! as HTMLTemplateElement; // <template>要素への参照
-    this.hostElement = document.getElementById("app")! as HTMLDivElement; // テンプレートを表示する親要素(id='app')への参照
-    this.assignedProjects = [];
+      templateId
+    )! as HTMLTemplateElement;
+    this.hostElement = document.getElementById(hostElementId)! as T; // 表示先のhostElementの型
 
     const importedHTML = document.importNode(
       this.templateElement.content,
       true
     )!;
-    this.element = importedHTML.firstElementChild as HTMLElement;
-    this.element.id = `${this.type}-projects`;
+    this.element = importedHTML.firstElementChild as U;
+    if (newElementId) {
+      this.element.id = newElementId;
+    }
+    this.attach(insertAtStart);
+  }
+  abstract configure(): void; // abstractで定義した場合、継承したクラス(サブクラス)で処理内容を必ず定義
+  abstract renderContent(): void;
 
+  private attach(insertAtBeginning: boolean) {
+    console.log("ProjectList attach");
+    // 送信した値を描画する
+    this.hostElement.insertAdjacentElement(
+      insertAtBeginning ? "afterbegin" : "beforeend",
+      this.element
+    );
+  }
+}
+
+// 一つ一つのアイテムをリストの項目として表示するためのクラス
+class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+  private project: Project;
+
+  get manday() {
+    if (this.project.manday < 20) {
+      return this.project.manday.toString() + "人日";
+    } else {
+      return (this.project.manday / 20).toString() + "人月";
+    }
+  }
+
+  constructor(hostId: string, project: Project) {
+    super("single-project", hostId, false, project.id);
+    this.project = project;
+    this.configure();
+    this.renderContent();
+  }
+  configure() {}
+  renderContent() {
+    this.element.querySelector("h2")!.textContent = this.project.title;
+    this.element.querySelector("h3")!.textContent = this.manday;
+    this.element.querySelector("p")!.textContent = this.project.description;
+  }
+}
+
+// 描画させたい
+class ProjectList extends Component<HTMLDivElement, HTMLElement> {
+  assignedProjects: Project[]; // <section>
+
+  constructor(private type: "active" | "finished") {
+    super("project-list", "app", false, `${type}-projects`);
+    // 要素への参照を取得する作業
+    this.hostElement = document.getElementById("app")! as HTMLDivElement; // テンプレートを表示する親要素(id='app')への参照
+    this.assignedProjects = [];
+
+    this.configure();
+    this.renderContent();
+  }
+
+  configure() {
     projectState.addListener((projects: Project[]) => {
       const relevantProjects = projects.filter((project) => {
         if (this.type === "active") {
-          return (project.status === ProjectStatus.Active);
+          return project.status === ProjectStatus.Active;
         }
-          return (project.status === ProjectStatus.Finished);
+        return project.status === ProjectStatus.Finished;
       });
       this.assignedProjects = relevantProjects;
       this.renderProjects();
     });
-    this.attach();
-    this.renderContent();
   }
 
-  private renderProjects() {
-    const listEl = document.getElementById(
-      `${this.type}-projects-list`
-    )! as HTMLUListElement;
-    listEl.innerHTML = '';
-    for (const prjItem of this.assignedProjects) {
-      const listItem = document.createElement("li");
-      listItem.textContent = prjItem.title;
-      listEl?.appendChild(listItem);
-    }
-  }
-
-  private renderContent() {
+  renderContent() {
+    console.log("renderContent");
     const listId = `${this.type}-projects-list`;
     this.element.querySelector("ul")!.id = listId;
     this.element.querySelector("h2")!.textContent =
       this.type === "active" ? "実行中プロジェクト" : "完了プロジェクト";
   }
 
-  private attach() {
-    // 送信した値を描画する
-    this.hostElement.insertAdjacentElement("beforeend", this.element);
+  private renderProjects() {
+    console.log("renderProjects"); // 最後
+    const listEl = document.getElementById(
+      `${this.type}-projects-list`
+    )! as HTMLUListElement;
+    listEl.innerHTML = "";
+    for (const prjItem of this.assignedProjects) {
+      new ProjectItem(listEl.id, prjItem);
+    }
   }
 }
 
-class ProjectInput {
-  templateElement: HTMLTemplateElement; // <template id="project-input">
-  hostElement: HTMLDivElement; //  <div id="app"></div>
-  element: HTMLFormElement; // <From>
-
+class ProjectInput extends Component<HTMLDivElement, HTMLFormElement> {
   titleInputElement: HTMLInputElement;
   descriptionInputElement: HTMLInputElement;
   mandayInputElement: HTMLInputElement;
 
   constructor() {
+    super("project-input", "app", true, "user-input");
     // 要素への参照を取得する作業
     this.templateElement = document.getElementById(
       "project-input"
     )! as HTMLTemplateElement; // <template>要素への参照
     this.hostElement = document.getElementById("app")! as HTMLDivElement; // テンプレートを表示する親要素(id='app')への参照
-
-    const importedHTML = document.importNode(
-      this.templateElement.content,
-      true
-    )!;
-    this.element = importedHTML.firstElementChild as HTMLFormElement;
-    this.element.id = "user-input";
 
     this.titleInputElement = this.element.querySelector(
       "#title"
@@ -202,12 +251,11 @@ class ProjectInput {
     ) as HTMLInputElement; // <input type="number" id="manday" step="1" min="0" max="10000" />
 
     this.configure();
-    this.attach();
   }
 
   // 3つのフォームすべてにアクセスしてユーザの入力値を取得。入力値が正しいかバリデーションを行う。バリデーションを行った結果を返す
   private allInputContent(): [string, string, number] | void {
-    // タプルかundefinedを返す
+    console.log("allInputContent"); // 最初
     // 入力値を取得
     const inputTitle = this.titleInputElement.value;
     const inputDescription = this.descriptionInputElement.value;
@@ -235,6 +283,12 @@ class ProjectInput {
     }
   }
 
+  configure() {
+    this.element.addEventListener("submit", this.submitHandler);
+  }
+
+  renderContent() {}
+
   private clearInputs() {
     this.titleInputElement.value = "";
     this.descriptionInputElement.value = "";
@@ -251,17 +305,6 @@ class ProjectInput {
       projectState.addProject(title, description, manday);
     }
     this.clearInputs();
-  }
-
-  // イベントリスナーの設定
-  private configure() {
-    this.element.addEventListener("submit", this.submitHandler);
-  }
-
-  // 要素を追加する作業
-  private attach() {
-    // フォームを描画する
-    this.hostElement.insertAdjacentElement("afterbegin", this.element); // 第一引数はどこに追加するかのオプション
   }
 }
 const prjInput = new ProjectInput();
