@@ -54,7 +54,7 @@ class ProjectState extends State<Project> {
     return this.instance;
   }
 
-  private notifyListeners() {
+  private updateListeners() {
     console.log("2");
     for (const listenerFn of this.listeners) {
       listenerFn(this.projects.slice());
@@ -71,7 +71,17 @@ class ProjectState extends State<Project> {
       ProjectStatus.Active
     );
     this.projects.push(newProject);
-    this.notifyListeners();
+    this.updateListeners();
+  }
+
+  // D&Dでproject.stateを変える
+  changeProjectStatus(projectId: string, newStatus: ProjectStatus) {
+    // ここでListにアクセスする
+    const project = this.projects.find(p => p.id === projectId);
+    if (project && project.status !== newStatus) {
+      project.status = newStatus;
+      this.updateListeners();
+    }
   }
 }
 
@@ -235,8 +245,10 @@ class ProjectList
     }
   }
 
+  @autoBind
   dropHandler(event: DragEvent): void {
-    console.log("dropHandler", event.dataTransfer!.getData("text/plain"));
+    const prjId = event.dataTransfer!.getData("text/plain");
+    projectState.changeProjectStatus(prjId, this.type === 'active'? ProjectStatus.Active : ProjectStatus.Finished);
   }
 
   @autoBind
