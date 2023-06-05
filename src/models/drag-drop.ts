@@ -5,7 +5,7 @@ namespace App {
     dragEndHandler(event: DragEvent): void;
   }
   
-  export interface IDropTarget {
+  export interface IDragTarget {
     dragOverHandler(event: DragEvent): void;
     dropHandler(event: DragEvent): void;
     dragLeaveHandler(event: DragEvent): void;
