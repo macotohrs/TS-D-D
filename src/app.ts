@@ -1,3 +1,15 @@
+// Drag & Drop
+interface IDraggable {
+  dragStartHandler(event: DragEvent): void;
+  dragEndHandler(event: DragEvent): void;
+}
+
+interface IDropTarget {
+  dragOverHandler(event: DragEvent): void;
+  dropHandler(event: DragEvent): void;
+  dragLeaveHandler(event: DragEvent): void;
+}
+
 // Project Type クラスで型を定義する
 enum ProjectStatus {
   Active,
@@ -155,7 +167,10 @@ abstract class Component<T extends HTMLElement, U extends HTMLElement> {
 }
 
 // 一つ一つのアイテムをリストの項目として表示するためのクラス
-class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+class ProjectItem
+  extends Component<HTMLUListElement, HTMLLIElement>
+  implements IDraggable
+{
   private project: Project;
 
   get manday() {
@@ -172,7 +187,16 @@ class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
     this.configure();
     this.renderContent();
   }
-  configure() {}
+
+  @autoBind
+  dragStartHandler(event: DragEvent): void {}
+
+  dragEndHandler(event: DragEvent): void {}
+  configure() {
+    this.element.addEventListener("dragstart", this.dragStartHandler);
+    this.element.addEventListener("dragend", this.dragStartHandler);
+  }
+
   renderContent() {
     this.element.querySelector("h2")!.textContent = this.project.title;
     this.element.querySelector("h3")!.textContent = this.manday;
