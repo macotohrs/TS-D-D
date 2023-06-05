@@ -1,14 +1,14 @@
 namespace App {
   type Listener<T> = (items: T[]) => void;
-  
+
   class State<T> {
     protected listeners: Listener<T>[] = []; // protected継承先のクラスからならアクセスできる（他はダメ）
-  
+
     addListener(listenerFn: Listener<T>) {
       this.listeners.push(listenerFn);
     }
   }
-  
+
   export class ProjectState extends State<Project> {
     private projects: Project[] = [];
     private static instance: ProjectState; //インスタンスを保持するためのprop
@@ -16,7 +16,7 @@ namespace App {
       super();
       // シングルトン
     }
-  
+
     static getInstance() {
       if (this.instance) {
         return this.instance;
@@ -24,13 +24,13 @@ namespace App {
       this.instance = new ProjectState();
       return this.instance;
     }
-  
+
     private updateListeners() {
       for (const listenerFn of this.listeners) {
         listenerFn(this.projects.slice());
       }
     }
-  
+
     addProject(title: string, description: string, manday: number) {
       const newProject = new Project(
         Math.random().toString(),
@@ -42,7 +42,7 @@ namespace App {
       this.projects.push(newProject);
       this.updateListeners();
     }
-  
+
     // D&Dでproject.stateを変える
     changeProjectStatus(projectId: string, newStatus: ProjectStatus) {
       // ここでListにアクセスする
@@ -53,6 +53,6 @@ namespace App {
       }
     }
   }
-  
+
   export const projectState = ProjectState.getInstance(); // 他のクラスのようにnewするのではなく、getInstanceの処理で常にインスタンスが一つになるようにする
 }

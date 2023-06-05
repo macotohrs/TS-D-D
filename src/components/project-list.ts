@@ -1,9 +1,13 @@
 /// <reference  path="base-component.ts"/>
+/// <reference  path="../decorators/autobind.ts"/>
+/// <reference  path="../models/project.ts"/>
+/// <reference  path="../models/drag-drop.ts"/>
+/// <reference  path="../state/project.ts"/>
 
 namespace App {
   export class ProjectList
     extends Component<HTMLDivElement, HTMLElement>
-    implements IDropTarget
+    implements IDragTarget
   {
     assignedProjects: Project[]; // <section>
 
